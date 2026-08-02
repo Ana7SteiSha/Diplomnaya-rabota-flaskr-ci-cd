@@ -30,17 +30,15 @@
 
 ```mermaid
 graph LR
-A[Код] --> B[SAST: Bandit]
-A --> C[Security Checks: Gitleaks + Trivy]
-B --> D[Security Gateway]
-C --> D
-E[Приложение] --> F[DAST: OWASP ZAP]
-F --> D
-D --> G{Релиз?}
-G -->|Да| H[Деплой]
-G -->|Нет| I[Уведомление в PR]
-
-Локальный запуск
+    A[Код] --> B[SAST: Bandit]
+    A --> C[Security Checks: Gitleaks + Trivy]
+    B --> D[Security Gateway]
+    C --> D
+    E[Приложение] --> F[DAST: OWASP ZAP]
+    F --> D
+    D --> G{Релиз?}
+    G -->|Да| H[Деплой]
+    G -->|Нет| I[Уведомление в PR]
 # Клонировать репозиторий
 git clone https://github.com/Ana7SteiSha/Diplomnaya-rabota-flaskr-ci-cd.git
 cd Diplomnaya-rabota-flaskr-ci-cd
@@ -55,9 +53,6 @@ pip install -r requirements.txt
 
 # Запустить приложение
 flask --app flaskr run --host=0.0.0.0 --port=5000
-
-После запуска приложение доступно по адресу: http://localhost:5000/hello
-
 Результаты проверок безопасности
 Этап	Инструмент	Статус	Артефакт
 SAST	Bandit	✅ Успешно	bandit-report.json
@@ -79,5 +74,3 @@ Kubernetes Security — добавление проверки манифесто
 
 Документация
 Подробное описание пайплайна, аналитика выбора инструментов и описание процесса в DEVSECOPS.md
-
-
