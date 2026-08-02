@@ -27,20 +27,20 @@
 ---
 
 ## Архитектура пайплайна
-[Код]
-├── SAST: Bandit ────────────────┐
-├── Security Checks: Gitleaks + Trivy ──┤
-└── Приложение ── DAST: OWASP ZAP ────┘
-│
-▼
-[Security Gateway]
-│
-▼
-{ Релиз? }
-/
-/
-▼ ▼
-[Деплой] [Уведомление в PR]
+[Код] 
+   ├── SAST: Bandit ────────────────┐
+   ├── Security Checks: Gitleaks + Trivy ──┤
+   └── Приложение ── DAST: OWASP ZAP ────┘
+                                          │
+                                          ▼
+                                  [Security Gateway]
+                                          │
+                                          ▼
+                                   { Релиз? }
+                                   /         \
+                                  /           \
+                                 ▼             ▼
+                            [Деплой]    [Уведомление в PR]
 ---
 
 ## Локальный запуск
