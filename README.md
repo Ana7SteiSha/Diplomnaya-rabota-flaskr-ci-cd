@@ -82,3 +82,7 @@ Kubernetes Security — добавление проверки манифесто
 
 Документация
 Подробное описание пайплайна, аналитика выбора инструментов и описание процесса в DEVSECOPS.md
+
+## Результаты работы пайплайна
+
+![Результаты CI/CD](https://raw.githubusercontent.com/Ana7SteiSha/Diplomnaya-rabota-flaskr-ci-cd/main/images/actions_result.png)
