@@ -60,7 +60,7 @@ jobs:
         name: trivy-report
         path: trivy-results.sarif
 
-          # ==================== ЭТАП 3: DAST ====================
+           # ==================== ЭТАП 3: DAST ====================
   dast:
     runs-on: ubuntu-latest
     needs: [sast, security-checks]
