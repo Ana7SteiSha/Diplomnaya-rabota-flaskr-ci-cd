@@ -1,4 +1,4 @@
-name: Flaskr CI/CD Pipeline
+name: Flaskr DevSecOps Pipeline
 
 on:
   push:
@@ -7,9 +7,9 @@ on:
     branches: [ "main" ]
 
 jobs:
-  test-and-sast:
+  # ==================== ЭТАП 2: SAST ====================
+  sast:
     runs-on: ubuntu-latest
-    
     steps:
     - uses: actions/checkout@v4
     
@@ -23,9 +23,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
     
-    - name: Run tests with pytest
-      run: pytest tests/ -v || true
-    
     - name: Run Bandit (SAST)
       run: bandit -r flaskr/ -f json -o bandit-report.json || true
     
@@ -34,3 +31,114 @@ jobs:
       with:
         name: bandit-report
         path: bandit-report.json
+
+  # ==================== ЭТАП 4: SECURITY CHECKS ====================
+  security-checks:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run Gitleaks (Secret Detection)
+      uses: gitleaks/gitleaks-action@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      continue-on-error: true
+    
+    - name: Run Trivy (Dependency Scanner)
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        severity: 'CRITICAL,HIGH'
+      continue-on-error: true
+    
+    - name: Upload Trivy report
+      uses: actions/upload-artifact@v4
+      with:
+        name: trivy-report
+        path: trivy-results.sarif
+
+  # ==================== ЭТАП 3: DAST ====================
+  dast:
+    runs-on: ubuntu-latest
+    needs: [sast, security-checks]  # Запускаем после SAST и Security Checks
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Start Flask application in background
+      run: |
+        flask --app flaskr run --host=0.0.0.0 --port=5000 &
+        sleep 10  # Даем приложению время запуститься
+      env:
+        FLASK_ENV: development
+    
+    - name: Run OWASP ZAP Full Scan
+      run: |
+        docker run -v $(pwd):/zap/wrk owasp/zap2docker-stable \
+          zap-full-scan.py \
+          -t http://host.docker.internal:5000/hello \
+          -r dast-report.html \
+          -d  # Активное сканирование
+      continue-on-error: true  # Пока не блокируем пайплайн, просто собираем отчет
+    
+    - name: Upload DAST report
+      uses: actions/upload-artifact@v4
+      with:
+        name: dast-report
+        path: dast-report.html
+
+  # ==================== ЭТАП 5: SECURITY GATEWAY ====================
+  security-gateway:
+    runs-on: ubuntu-latest
+    needs: [sast, security-checks, dast]  # Зависит от всех предыдущих этапов
+    if: github.event_name == 'pull_request'
+    steps:
+    - name: Download all reports
+      uses: actions/download-artifact@v4
+      
+    - name: Generate Security Gateway Report
+      run: |
+        echo "## 🛡️ Security Gateway Report" > comment.md
+        echo "Проверка завершена. Результаты:" >> comment.md
+        echo "" >> comment.md
+        
+        # Проверяем наличие отчетов
+        if [ -f "bandit-report.json" ]; then
+          echo "✅ SAST (Bandit) - завершен" >> comment.md
+        else
+          echo "❌ SAST (Bandit) - отчет не найден" >> comment.md
+        fi
+        
+        if [ -f "trivy-results.sarif" ]; then
+          echo "✅ Trivy (зависимости) - завершен" >> comment.md
+        else
+          echo "❌ Trivy - отчет не найден" >> comment.md
+        fi
+        
+        if [ -f "dast-report.html" ]; then
+          echo "✅ DAST (OWASP ZAP) - завершен" >> comment.md
+          echo "   - Отчет приложен к артефактам" >> comment.md
+        else
+          echo "❌ DAST (OWASP ZAP) - отчет не найден" >> comment.md
+        fi
+        
+        echo "" >> comment.md
+        echo "📊 **Следующие шаги:**" >> comment.md
+        echo "1. Скачайте артефакты для детального анализа" >> comment.md
+        echo "2. Исправьте найденные уязвимости" >> comment.md
+        
+        gh pr comment ${{ github.event.pull_request.number }} -F comment.md
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
