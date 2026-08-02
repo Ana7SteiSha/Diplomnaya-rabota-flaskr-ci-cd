@@ -1,0 +1,5 @@
+Артефакты/
+├── bandit-report.json      
+├── dast-report.html        
+├── trivy-results.sarif     
+└── security-recommendations.md
